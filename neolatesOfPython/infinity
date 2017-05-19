@@ -1,0 +1,21 @@
+count = float("inf")
+print "infinity is: ", count
+count = count - float("inf")
+print "infinity - infinity is: ", count
+count = float("inf")
+print "infinity is: ", count
+count = count - count
+print "infinity counter - infinity counter is: ", count
+if(count == float("inf")):
+    print "they are equal"
+else:
+    print "nan and inf are not equal"
+
+count = float("inf")
+
+print "integer value of infinity is: ", int(count)
+
+#count = 1
+while (count < float("inf")):
+   print 'The count is:', count
+   count = count + count
