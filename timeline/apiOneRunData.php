@@ -8,23 +8,25 @@
   $pass = "root";
 
   $databaseName = "timeline_db";
+  $runid = $_POST['runid'];
 
   //--------------------------------------------------------------------------
   // 1) Connect to mysql database
   //--------------------------------------------------------------------------
-  include 'DB1.php';
   $con = mysqli_connect($host,$user,$pass);
   $dbs = mysqli_select_db($con, $databaseName);
+    
+    file_put_contents('php://stderr', print_r($runid, TRUE));
 
   //--------------------------------------------------------------------------
   // 2) Query database for data
   //--------------------------------------------------------------------------
- $a = mysqli_query($con, "SELECT * FROM runs ORDER BY event_time");
+ $a = mysqli_query($con, "SELECT * FROM runs WHERE runid = $runid");
 
           //query
  
 if($a === FALSE) { 
-    die(mysqli_error()); // TODO: better error handling
+    die(mysqli_error($con)); // TODO: better error handling
 }
 
 

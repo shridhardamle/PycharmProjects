@@ -47,10 +47,95 @@
         
         var Colors = ["#FF0000", "#00FF00", "#0000FF"];
         var colorArray = ["red", "blue", "green", "black", "pink", "yellow" , "aqua" , "gray" , "fuchsia" , "lime" , "maroon" , "navy" , "purple"];
+        var runDetails = {};
 
+var helpers =
+{
+    buildDropdown: function(result, dropdown, emptyMessage)
+    {
+        // Remove current options
+        dropdown.html('');
+        // Add the empty option with the empty message
+        dropdown.append('<option value="-1">' + emptyMessage + '</option>');
+        dropdown.append('<option value="0">' + 'Show all runs' + '</option>');
+        // Check result isnt empty
+        if(result != '')
+        {
+            // Loop through each of the results and append the option to the dropdown
+            $.each(result, function(k, v) {
+                   runDetails[v[0]] = v[1];
+                   dropdown.append('<option value="' + v[0] + '">' + v[1] + '</option>');
+                   });
+        }
+    }
+}
         
-        
-        function initialize() {
+        function initializeRunDetails() {
+            $(function ()
+              {
+              $.ajax({
+                     url: 'apiRunDetails.php',
+                     data: "",
+                     dataType: 'json',
+                     success: function(rows){
+                                            helpers.buildDropdown( rows, $('#dropdownRunDetails'), 'Select an option');
+                     }
+                    });
+              });
+        }
+        function initializeARun(selectedRunId, selectedRunName) {
+            
+            if( selectedRunId == "0" )
+            {
+                initializeRuns();
+                return;
+            }
+            
+            infowindow = new google.maps.InfoWindow(
+                                                    {
+                                                    size: new google.maps.Size(150,50)
+                                                    });
+                                                    
+                                                    var myOptions = {
+                                                        zoom: 7,
+                                                        mapTypeId: google.maps.MapTypeId.ROADMAP
+                                                    }
+                                                    map = new google.maps.Map(document.getElementById("map_canvas"), myOptions);
+                                                                     var usersAndGeoLocations = {};
+                                                                     $(function ()
+                                                                       {
+                                                                       $.ajax({
+                                                                              type: "POST",
+                                                                              url: 'apiOneRunData.php',
+                                                                              data: {"runid":selectedRunId},
+                                                                              dataType: 'json',
+                                                                              success: function(rows){
+                                                                              
+                                                                              address = rows[0][1] + ' , ' + rows[0][2];
+                                                                              geocoder = new google.maps.Geocoder();
+                                                                              geocoder.geocode( { 'address': address}, function(results, status) {
+                                                                                               map.fitBounds(results[0].geometry.viewport);
+                                                                                               
+                                                                                               });
+
+                                                                              
+                                                                              for(i=0;i<rows.length;i++)
+                                                                              {
+                                                                              if(rows[i][0] in usersAndGeoLocations)
+                                                                              {
+                                                                                usersAndGeoLocations[rows[i][0]].push([rows[i][1],rows[i][2]]);
+                                                                              }
+                                                                              else
+                                                                              {
+                                                                                usersAndGeoLocations[rows[i][0]]=[[rows[i][1],rows[i][2]]]
+                                                                              }
+                                                                              }
+                                                                                calculateAndDisplayRoute(usersAndGeoLocations);
+                                                                              }
+                                                                              });
+                                                                       });
+        }
+        function initializeRuns() {
             
             infowindow = new google.maps.InfoWindow(
                                                     {
@@ -70,7 +155,6 @@
                                                                      map.fitBounds(results[0].geometry.viewport);
                                                                      
                                                                      });
-                                                                     // setRoutes();
                                                                      var usersAndGeoLocations = {};
                                                                      $(function ()
                                                                        {
@@ -240,93 +324,6 @@
                                                                               return marker;
         }
         
-        function setRoutes(){
-            var directionsDisplay = new Array();
-            for (var i=0; i< startLoc.length; i++)
-            {
-                var rendererOptions =
-                {
-                    map: map,
-                    suppressMarkers : true,
-                    preserveViewport: true
-                }
-                directionsService = new google.maps.DirectionsService();
-                var travelMode = google.maps.DirectionsTravelMode.DRIVING;
-                var request =
-                {
-                    origin: startLoc[i],
-                    destination: endLoc[i],
-                    travelMode: travelMode
-                };
-                directionsService.route(request,makeRouteCallback(i,directionsDisplay[i]));
-            }
-
-        function makeRouteCallback(routeNum,disp){
-                if (polyline[routeNum] && (polyline[routeNum].getMap() != null))
-                {
-                    startAnimation(routeNum);
-                    return;
-                }
-                return function(response, status){
-                        if (status == google.maps.DirectionsStatus.OK)
-                        {
-                            var bounds = new google.maps.LatLngBounds();
-                            var route = response.routes[0];
-                            startLocation[routeNum] = new Object();
-                            endLocation[routeNum] = new Object();
-                            polyline[routeNum] = new google.maps.Polyline({
-                                                                        path: [],
-                                                                        strokeColor: '#FFFF00',
-                                                                        strokeWeight: 3
-                                                                        });
-                                                                      
-                            poly2[routeNum] = new google.maps.Polyline({
-                                                                         path: [],
-                                                                         strokeColor: '#FFFF00',
-                                                                         strokeWeight: 3
-                                                                       });
-                             // For each route, display summary information.
-                             var path = response.routes[0].overview_path;
-                             var legs = response.routes[0].legs;
-                             disp = new google.maps.DirectionsRenderer(rendererOptions);
-                             disp.setMap(map);
-                             disp.setDirections(response);
-                             //Markers
-                             for (i=0;i<legs.length;i++)
-                             {
-                                 if (i == 0)
-                                 {
-                                     startLocation[routeNum].latlng = legs[i].start_location;
-                                     startLocation[routeNum].address = legs[i].start_address;
-                                     // marker = google.maps.Marker({map:map,position: startLocation.latlng});
-                                     marker[routeNum] = createMarker(legs[i].start_location,"start",legs[i].start_address,"green");
-                                 }
-                                 endLocation[routeNum].latlng = legs[i].end_location;
-                                 endLocation[routeNum].address = legs[i].end_address;
-                                 var steps = legs[i].steps;
-                                 for (j=0;j<steps.length;j++)
-                                 {
-                                     var nextSegment = steps[j].path;
-                                     var nextSegment = steps[j].path;
-                                     for (k=0;k<nextSegment.length;k++)
-                                     {
-                                         polyline[routeNum].getPath().push(nextSegment[k]);
-                                         //bounds.extend(nextSegment[k]);
-                                     }
-                                 }
-                            }
-                        }
-                    
-                    polyline[routeNum].setMap(map);
-                    //map.fitBounds(bounds);
-                    startAnimation(routeNum);
-                    
-                } // else alert("Directions request failed: "+status);
-                
-            }
-            
-        }
-        
         var lastVertex = 1;
         var stepnum=0;
         var step = 50; // 5; // metres
@@ -381,9 +378,10 @@
             </script>
     </head>
     
-    <body onload="initialize()">
+    <body onload="initializeRunDetails()">
+        <select id="dropdownRunDetails" onchange="initializeARun(dropdownRunDetails.value, dropdownRunDetails.text);"></select>
         <div id="tools">
-            <button onclick="setRoutes();">Start</button>
+            <button onclick="initializeRuns();">Start</button>
         </div>
         <div id="map_canvas" style="width:100%;height:100%;"></div>
     </body>

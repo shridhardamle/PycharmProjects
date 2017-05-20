@@ -12,14 +12,13 @@
   //--------------------------------------------------------------------------
   // 1) Connect to mysql database
   //--------------------------------------------------------------------------
-  include 'DB1.php';
   $con = mysqli_connect($host,$user,$pass);
   $dbs = mysqli_select_db($con, $databaseName);
 
   //--------------------------------------------------------------------------
   // 2) Query database for data
   //--------------------------------------------------------------------------
- $a = mysqli_query($con, "SELECT * FROM runs ORDER BY event_time");
+ $a = mysqli_query($con, "SELECT * FROM run_details");
 
           //query
  
