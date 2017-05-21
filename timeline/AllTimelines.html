@@ -360,7 +360,7 @@
                 }
                 if( runmapsObject.allRunsData[runmapsObject.currentlyAnimatingRun]["messages"][messageIndex]["data"] != "blankMessage" )
                 {
-                    var infowindowContent = runmapsObject.allRunsData[runmapsObject.currentlyAnimatingRun]["messages"][messageIndex]["from"] +": "+ runmapsObject.allRunsData[runmapsObject.currentlyAnimatingRun]["messages"][messageIndex]["data"];
+                    var infowindowContent = "@<b>" + runmapsObject.allRunsData[runmapsObject.currentlyAnimatingRun]["messages"][messageIndex]["from"] +"</b>: "+ runmapsObject.allRunsData[runmapsObject.currentlyAnimatingRun]["messages"][messageIndex]["data"] + "<br/><p align='right'><sub>sent at 10.10am</sub></p>";
                     var infowindow = new google.maps.InfoWindow({
                                                             content: infowindowContent
                                                         });
