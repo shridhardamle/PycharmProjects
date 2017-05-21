@@ -69,7 +69,9 @@
         {
             this.runMapInfoWindow = undefined;
             this.runMapObject = undefined;
-            this.allRunsData = [];
+            this.allRunsData = {};
+            this.currentlyAnimatingRouteNum = -1;
+            this.currentlyAnimatingRun = "";
             this.initializeEverything = function()
             {
                 this.papareMap();
@@ -85,45 +87,81 @@
             }
             this.zoomToRun = function(runId, runName)
             {
-                var zoomToLatLong = this.allRunsData[runId][1][0] + ' , ' + this.allRunsData[runId][1][1];
+                var zoomToLatLong = this.allRunsData[runId]["location"][1][0] + ' , ' + this.allRunsData[runId]["location"][1][1];
                 geocoder = new google.maps.Geocoder();
                 geocoder.geocode( { 'address': zoomToLatLong}, function(results, status) {
                                  runmapsObject.runMapObject.fitBounds(results[0].geometry.viewport);
                                  
                                  });
+                if( this.currentlyAnimatingRouteNum != -1 )
+                {
+                    stopAnimation(this.currentlyAnimatingRouteNum);
+                    this.currentlyAnimatingRun = "";
+                }
+                this.currentlyAnimatingRouteNum = this.allRunsData[runId]["routeNum"];
+                this.currentlyAnimatingRun = runId;
+                startAnimation(this.currentlyAnimatingRouteNum);
             }
             this.loadRunsFromDatabase = function()
             {
+                runmapsObject.loadAllRunsData();
+            }
+            this.loadRunDetails = function(){
                 $(function ()
                   { $.ajax({
-                                url: 'apiRunDetails.php',
-                                data: "",
-                                dataType: 'json',
-                                success: function(rows){ runmapsObject.buildDropdown( rows, $('#dropdownRunDetails'), 'Select a run'); }
-                           });
-                   });
-                  
-                  $(function ()
-                    { $.ajax({
-                                url: 'apiAllRunsData.php',
-                                data: "",
-                                dataType: 'json',
-                                success: function(rows){
-                                for( i=0; i < rows.length; i++ )
-                                {
-                                    if( rows[i][0] in runmapsObject.allRunsData )
-                                    {
-                                        runmapsObject.allRunsData[rows[i][0]].push([rows[i][1],rows[i][2]]);
-                                    }
-                                    else
-                                    {
-                                        runmapsObject.allRunsData[rows[i][0]]=[[rows[i][1],rows[i][2]]]
-                                    }
-                                }
-                                runmapsObject.drawRunsOnTheMap();
+                           url: 'apiRunDetails.php',
+                           data: "",
+                           dataType: 'json',
+                           success: function(rows){
+                                    runmapsObject.buildDropdown( rows, $('#dropdownRunDetails'), 'Select a run');
+                                    runmapsObject.loadFirebaseData();
                                 }
                            });
-                    });
+                  });
+            }
+            this.loadAllRunsData = function(){
+                $(function ()
+                  { $.ajax({
+                           url: 'apiAllRunsData.php',
+                           data: "",
+                           dataType: 'json',
+                           success: function(rows){
+                                    for( i=0; i < rows.length; i++ )
+                                    {
+                                        if( rows[i][0] in runmapsObject.allRunsData )
+                                        {
+                                            runmapsObject.allRunsData[rows[i][0]]["location"].push([rows[i][1], rows[i][2]]);
+                                        }
+                                        else
+                                        {
+                                            runmapsObject.allRunsData[rows[i][0]]={};
+                                            runmapsObject.allRunsData[rows[i][0]]["location"] = [];
+                                            runmapsObject.allRunsData[rows[i][0]]["location"].push([rows[i][1], rows[i][2]]);
+                                        }
+                                    }
+                                    runmapsObject.drawRunsOnTheMap();
+                                    runmapsObject.loadRunDetails();
+                           }
+                           });
+                  });
+            }
+            this.loadFirebaseData = function(){
+                $(function ()
+                  { $.ajax({
+                           url: 'firebaseData.json',
+                           data: "",
+                           dataType: 'json',
+                           success: function(rows){
+                                       for( i=0; i < rows.length; i++ )
+                                       {
+                                           if( rows[i]["runid"] in runmapsObject.allRunsData )
+                                           {
+                                                runmapsObject.allRunsData[rows[i]["runid"]]["messages"] = rows[i]["messages"];
+                                           }
+                                       }
+                           }
+                           });
+                  });
             }
             this.drawRunsOnTheMap = function (){
                 var rendererOptions =
@@ -138,12 +176,12 @@
                 for( var key in this.allRunsData )
                 {
                     var waypts = [];
-                    for(var j=1 ;j < this.allRunsData[key].length; j = j+(this.allRunsData[key].length % 60 ))
+                    for(var j=1 ;j < this.allRunsData[key]["location"].length; j = j+(this.allRunsData[key]["location"].length % 60 ))
                     {
                         // if j = 0, also store in originWayPt
                         // if j is last, also store in destinationWayPt
                         waypts.push({
-                                    location : new google.maps.LatLng((this.allRunsData[key])[j][0] , (this.allRunsData[key])[j][1]),
+                                    location : new google.maps.LatLng(this.allRunsData[key]["location"][j][0], this.allRunsData[key]["location"][j][1]),
                                     stopover : true
                                     });
                     }
@@ -151,19 +189,20 @@
                     var directionsService = new google.maps.DirectionsService();
                     directionsService.route(
                                             {
-                                            origin: new google.maps.LatLng((this.allRunsData[key])[1][0] , (this.allRunsData[key])[1][1]),
-                                            destination: new google.maps.LatLng((this.allRunsData[key])[(this.allRunsData[key].length) -1][0] , (this.allRunsData[key])[(this.allRunsData[key].length) -1][1]),
+                                            origin: new google.maps.LatLng( this.allRunsData[key]["location"][1][0], this.allRunsData[key]["location"][1][1]),
+                                            destination: new google.maps.LatLng(this.allRunsData[key]["location"][(this.allRunsData[key]["location"].length-1)][0], this.allRunsData[key]["location"][(this.allRunsData[key]["location"].length-1)][1]),
                                             waypoints: waypts,
                                             optimizeWaypoints: true,
                                             travelMode: 'DRIVING'
                                             },
-                                            dirServiceRouteCallBack(routeNum,directionsDisplay[routeNum])  );
+                                            dirServiceRouteCallBack(routeNum, directionsDisplay[routeNum], key)  );
                     routeNum = routeNum + 1;
                 }
-                function dirServiceRouteCallBack(routeNum,disp){
+                function dirServiceRouteCallBack(routeNum,disp, runId){
+                    runmapsObject.allRunsData[runId]["routeNum"] = routeNum;
                     if (polyline[routeNum] && (polyline[routeNum].getMap() != null))
                     {
-                        startAnimation(routeNum);
+                        //startAnimation(routeNum);
                         return;
                     }
                     return function(response, status){
@@ -221,7 +260,7 @@
                         
                         polyline[routeNum].setMap(runmapsObject.runMapObject);
                         //map.fitBounds(bounds);
-                        startAnimation(routeNum);
+                        //startAnimation(routeNum);
                         
                     } // else alert("Directions request failed: "+status);
                     
@@ -236,13 +275,17 @@
                 dropdown.html('');
                 // Add the empty option with the empty message
                 dropdown.append('<option value="-1">' + emptyMessage + '</option>');
-                dropdown.append('<option value="0">' + 'Show all runs' + '</option>');
+                // dropdown.append('<option value="0">' + 'Show all runs' + '</option>');
                 // Check result isnt empty
                 if(result != '')
                 {
                     // Loop through each of the results and append the option to the dropdown
                     $.each(result, function(k, v) {
-                           runmapsObject.allRunsData[v[0]] = [v[1]];
+                           if( v[0] in runmapsObject.allRunsData )
+                           {
+                                runmapsObject.allRunsData[v[0]]["runname"] = [];
+                                runmapsObject.allRunsData[v[0]]["runname"] = v[1];
+                           }
                            dropdown.append('<option value="' + v[0] + '">' + v[1] + '</option>');
                            });
                 }
@@ -277,7 +320,7 @@
         var lastVertex = 1;
         var stepnum=0;
         var step = 50; // 5; // metres
-        var tick = 500; // milliseconds
+        var tick = 1000; // milliseconds
         var eol= [];
         //----------------------------------------------------------------------
         function updatePoly(i,d) {
@@ -298,7 +341,7 @@
         }
         //----------------------------------------------------------------------------
         
-        function animate(index,d) {
+        function animate(index,d,messageIndex) {
             if (d>eol[index]) {
                 
                 marker[index].setPosition(endLocation[index].latlng);
@@ -309,19 +352,45 @@
             //map.panTo(p);
             marker[index].setPosition(p);
             updatePoly(index,d);
-            timerHandle[index] = setTimeout("animate("+index+","+(d+step)+")", tick);
+            if( runmapsObject.allRunsData[runmapsObject.currentlyAnimatingRun]["messages"].length > messageIndex )
+            {
+                if( marker[index].infowindow != undefined || marker[index].infowindow != null )
+                {
+                    marker[index].infowindow.close();
+                }
+                if( runmapsObject.allRunsData[runmapsObject.currentlyAnimatingRun]["messages"][messageIndex]["data"] != "blankMessage" )
+                {
+                    var infowindow = new google.maps.InfoWindow({
+                                                            content: runmapsObject.allRunsData[runmapsObject.currentlyAnimatingRun]["messages"][messageIndex]["data"]
+                                                        });
+                    marker[index].infowindow = infowindow;
+                    infowindow.open( runmapsObject.runMapObject, marker[index] );
+                }
+            }
+            else
+            {
+                if( marker[index].infowindow != undefined || marker[index].infowindow != null )
+                {
+                    marker[index].infowindow.close();
+                }
+            }
+            messageIndex = messageIndex + 1;
+            timerHandle[index] = setTimeout("animate("+index+","+(d+step)+","+messageIndex+")", tick);
         }
         
         //-------------------------------------------------------------------------
         
+        function stopAnimation(index){
+            clearTimeout(timerHandle[index]);
+        }
+        
         function startAnimation(index) {
-            if (timerHandle[index]) clearTimeout(timerHandle[index]);
             eol[index]=polyline[index].Distance();
             runmapsObject.runMapObject.setCenter(polyline[index].getPath().getAt(0));
             
             poly2[index] = new google.maps.Polyline({path: [polyline[index].getPath().getAt(0)], strokeColor:"#FFFF00", strokeWeight:3});
             
-            timerHandle[index] = setTimeout("animate("+index+",50)",2000);  // Allow time for the initial map display
+            timerHandle[index] = setTimeout("animate("+index+",50,0)",2000);  // Allow time for the initial map display
         }
         
         //----------------------------------------------------------------------------
