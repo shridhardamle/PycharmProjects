@@ -360,8 +360,9 @@
                 }
                 if( runmapsObject.allRunsData[runmapsObject.currentlyAnimatingRun]["messages"][messageIndex]["data"] != "blankMessage" )
                 {
+                    var infowindowContent = runmapsObject.allRunsData[runmapsObject.currentlyAnimatingRun]["messages"][messageIndex]["from"] +": "+ runmapsObject.allRunsData[runmapsObject.currentlyAnimatingRun]["messages"][messageIndex]["data"];
                     var infowindow = new google.maps.InfoWindow({
-                                                            content: runmapsObject.allRunsData[runmapsObject.currentlyAnimatingRun]["messages"][messageIndex]["data"]
+                                                            content: infowindowContent
                                                         });
                     marker[index].infowindow = infowindow;
                     infowindow.open( runmapsObject.runMapObject, marker[index] );
