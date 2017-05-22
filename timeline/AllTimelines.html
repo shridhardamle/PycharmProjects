@@ -8,11 +8,9 @@
         <script type="text/javascript" src="http://maps.google.com/maps/api/js?key=AIzaSyAOawiASNbqQ4TWXRS-pBpQdJHjizGfhyY"></script>
         <script type ="text/javascript" src="http://www.geocodezip.com/scripts/v3_epoly.js"></script>
         <script type="text/javascript">
-            
-        var runmapsObject = new CRunMaps();
         
-        var directionDisplay;
-        var directionsService;
+        /*singleton object of CRunMaps class*/
+        var runmapsObject = new CRunMaps();
         
         var marker = []; /*This array stores markers(cars) for each route*/
         var polyline = []; /*This array is used to store route lines*/
@@ -187,7 +185,6 @@
                     runmapsObject.allRunsData[runId]["routeNum"] = routeNum;
                     if (polyline[routeNum] && (polyline[routeNum].getMap() != null))
                     {
-                        //startAnimation(routeNum);
                         return;
                     }
                     return function(response, status){
@@ -244,7 +241,6 @@
                         
                         polyline[routeNum].setMap(runmapsObject.runMapObject);
                         //map.fitBounds(bounds);
-                        //startAnimation(routeNum);
                         
                     } // else alert("Directions request failed: "+status);
                     
@@ -370,7 +366,7 @@
         function stopAnimation(index){
             clearTimeout(timerHandle[index]);
         }
-        
+        /*Start a car moving*/
         function startAnimation(index) {
             eol[index]=polyline[index].Distance();
             runmapsObject.runMapObject.setCenter(polyline[index].getPath().getAt(0));
